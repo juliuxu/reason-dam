@@ -10,8 +10,26 @@ type piece =
 module Styles = {
   open Css;
 
-  let squareSize = 8 * 8;
+  module Theme = {
+    let squareSize = 8 * 8;
+    let evenSquareColor = lightgoldenrodyellow;
+    let oddSquareColor = darkred;
 
+    let playerWColor = white;
+    let playerBColor = hex("2A2A2A");
+
+    let playerToColor = player =>
+      switch (player) {
+      | W => playerWColor
+      | B => playerBColor
+      };
+
+    let playerToColorInverted = player =>
+      switch (player) {
+      | W => playerToColor(B)
+      | B => playerToColor(W)
+      };
+  };
   let row = style([display(flexBox)]);
 
   let square = even =>
@@ -19,28 +37,46 @@ module Styles = {
       display(flexBox),
       alignItems(center),
       justifyContent(center),
-      background(even ? lightgoldenrodyellow : darkred),
-      width(px(squareSize)),
-      height(px(squareSize)),
+      background(even ? Theme.evenSquareColor : Theme.oddSquareColor),
+      width(px(Theme.squareSize)),
+      height(px(Theme.squareSize)),
       cursor(`pointer),
     ]);
 
-  let queen = color => style([]);
-  let peasant = color =>
+  let peasant = player =>
     style([
       width(pct(60.)),
       height(pct(50.)),
       borderRadius(pct(50.)),
-      border(px(3), solid, color),
-      backgroundColor(color),
+      border(px(3), solid, Theme.playerToColor(player)),
+      backgroundColor(Theme.playerToColor(player)),
+      boxShadow(~x=px(0), ~y=px(5), ~blur=px(2), rgba(50, 50, 50, 0.75)),
     ]);
+
+  let queen = player =>
+    Css.merge([
+      peasant(player),
+      style([
+        before([
+          display(flexBox),
+          justifyContent(center),
+          alignItems(center),
+          unsafe("content", {j|"♕"|j}),
+          fontSize(px(20)),
+          fontWeight(bold),
+          marginTop(px(2)),
+          color(Theme.playerToColorInverted(player)),
+        ]),
+      ]),
+    ]);
+
   let piece = piece =>
     switch (piece) {
     | None => style([])
-    | P(W) => peasant(white)
-    | Q(W) => queen(white)
-    | P(B) => peasant(black)
-    | Q(B) => queen(black)
+    | P(W) => peasant(W)
+    | Q(W) => queen(W)
+    | P(B) => peasant(B)
+    | Q(B) => queen(B)
     };
 };
 
@@ -60,23 +96,23 @@ module Square = {
 
 type state = {rows: list(list(piece))};
 
-let state = {
+let initState = {
   rows: [
-    [None, P(W), None, P(W), None, P(W), None, P(W)],
-    [P(W), None, P(W), None, P(W), None, P(W), None],
-    [None, P(W), None, P(W), None, P(W), None, P(W)],
+    [None, Q(W), None, Q(W), None, Q(W), None, Q(W)],
+    [Q(W), None, Q(W), None, Q(W), None, Q(W), None],
+    [None, Q(W), None, Q(W), None, Q(W), None, Q(W)],
     [None, None, None, None, None, None, None, None],
     [None, None, None, None, None, None, None, None],
-    [P(B), None, P(B), None, P(B), None, P(B), None],
-    [None, P(B), None, P(B), None, P(B), None, P(B)],
-    [P(B), None, P(B), None, P(B), None, P(B), None],
+    [Q(B), None, Q(B), None, Q(B), None, Q(B), None],
+    [None, Q(B), None, Q(B), None, Q(B), None, Q(B)],
+    [Q(B), None, Q(B), None, Q(B), None, Q(B), None],
   ],
 };
 
 [@react.component]
 let make = () => {
   <div>
-    {state.rows
+    {initState.rows
      |> List.mapi((rowi, row) =>
           <div className=Styles.row key={string_of_int(rowi)}>
             {row
